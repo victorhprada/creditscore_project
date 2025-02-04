@@ -3,6 +3,7 @@ import seaborn as sn
 import matplotlib.pyplot as plt
 import plotly.express as px
 from scipy.stats import skew
+from sklearn.preprocessing import LabelEncoder
 
 df = pd.read_csv('CREDIT_SCORE_PROJETO_PARTE1.csv', delimiter=';')
 
@@ -144,20 +145,77 @@ plt.show()
 
 # Bivariada
 
-# Relação número de filhos x score de crédito
-# É possível ver que os outliers (pessoas com muitos filhors) têm um score de crédito maior, isso pode indicar que pessoas com mais filhos não possuem
-# dificuldades financeiras, já as pessoas que não possuem filhos têm a tendência a terem um score mais baixo por não conseguir pagar suas contas
-print(df.groupby('Credit Score')['Number of Children'].describe())
+# Idade x Estado Civil
+mediana_idade_estado_civil = df.groupby('Marital Status')['Age'].median().reset_index()
 
-sn.violinplot(x=df['Credit Score'],
-              y=df['Number of Children'])
-plt.title('Distribuição do número de filhos por score de crédito')
+fig = px.bar(mediana_idade_estado_civil,
+             x='Marital Status',
+             y='Age',
+             title='Media de idade por estado civil',
+             labels={'Marital Status': 'Estado Civil', 'Age': 'Idade'})
+fig.show()
+
+# Score de Crédito e Nível de Escolaridade
+
+# Aplicando o Label Encoder na coluna de crédito score
+label_enconder = LabelEncoder()
+
+df['Credit_Score_encoded'] = label_enconder.fit_transform(df['Credit Score'])
+
+# Mapeando manualmente a ordem
+mapping = {
+    0: 'Average',
+    1: 'High',
+    2: 'Low'
+}
+
+# Criando uma nova coluna com os rótulos desejados
+df['Credit_Score_label'] = df['Credit_Score_encoded'].map(mapping)
+
+# Adicionando ordem categorica
+df['Credit_Score_label'] = pd.Categorical(df['Credit_Score_label'],
+                                            categories=['High', 'Average', 'Low'],
+                                            ordered=True)
+
+# Criando tabela de contingência usando a coluna com os rótulos
+table = pd.crosstab(df['Credit_Score_label'], df['Education'])
+
+plt.figure(figsize=(10, 6))
+sn.heatmap(table, annot=True, fmt='d', cmap='coolwarm')
+plt.title('Mapa de Calor: Score de Crédito x Nível de Escolaridade')
+plt.xlabel('Education')
+plt.ylabel('Credit Score')
 plt.show()
 
-# Renda x Número de filhos
-sn.scatterplot(x=df['Income'],
-               y=df['Number of Children'])
-plt.xlabel('Renda')
-plt.ylabel('Número de Filhos')
-plt.title('Relação entre renda e número de filhos')
+print(label_enconder.classes_)
+
+# Salário x Idade
+mediana_salario_idade = df.groupby('Age')['Income'].median().reset_index()
+
+fig = px.line(mediana_salario_idade,
+             x='Age',
+             y='Income',
+             title='Media de salário por idade',
+             labels={'Age': 'Idade', 'Income': 'Média de Salário'})
+fig.show()
+
+# Salário x Score
+mediana_salario_score = df.groupby('Credit_Score_encoded')['Income'].mean().reset_index()
+
+fig = px.bar(mediana_salario_score,
+             x='Credit_Score_encoded',
+             y='Income',
+             title='Média de salários x Score de Crédito')
+fig.show()
+
+# Casa prórpia x Credit Score
+
+# Criando tabela de contingência
+table_casa_credito = pd.crosstab(df['Credit Score'], df['Home Ownership'])
+
+plt.figure(figsize=(10, 6))
+sn.heatmap(table_casa_credito, annot=True, fmt='d', cmap='coolwarm')
+plt.title('Mapa de Calor: Credit Score x Casa Própria')
+plt.xlabel('Casa Própria')
+plt.ylabel('Credit Score')
 plt.show()
